@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="الطلبات" />
+  <meta name="theme-color" content="#3b82f6" />
+  <title>نظام إدارة الطلبات</title>
+  <meta name="description" content="لوحة تحكم عربية احترافية لإدارة الطلبات مع حفظ البيانات محلياً" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&family=Cairo:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- SheetJS for real Excel export -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+
+  <!-- ═══════════════ HEADER ═══════════════ -->
+  <header id="main-header" class="header no-print">
+    <div class="header-top">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="22" height="22" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+            <ellipse cx="12" cy="5" rx="9" ry="3" />
+            <path d="M3 5v6c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
+            <path d="M3 11v6c0 1.66 4.03 3 9 3s9-1.34 9-3v-6" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-title">نظام إدارة الطلبات</h1>
+          <p class="brand-date" id="today-date"></p>
+        </div>
+      </div>
+
+      <div id="alerts-indicator" class="alerts-indicator hidden">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+          <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+        </svg>
+        <span id="alerts-count">0</span> تنبيه
+      </div>
+
+      <div class="header-actions">
+        <!-- Select Currency -->
+        <select id="currency-select" class="currency-select">
+          <option value="SAR">ريال سعودي (﷼)</option>
+          <option value="YER">ريال يمني (﷼)</option>
+          <option value="USD">دولار ($)</option>
+        </select>
+
+        <button id="btn-add-new" class="btn-primary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          <span>طلب جديد</span>
+        </button>
+
+        <div class="toolbar-group">
+          <button class="tool-btn" id="btn-export-excel" title="تصدير Excel">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span class="tool-label">Excel</span>
+          </button>
+          <button class="tool-btn" id="btn-import" title="استيراد JSON">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <polyline points="16 16 12 20 8 16" />
+              <line x1="12" y1="4" x2="12" y2="20" />
+            </svg>
+            <span class="tool-label">استيراد</span>
+          </button>
+          <button class="tool-btn" id="btn-backup" title="نسخة احتياطية JSON">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            <span class="tool-label">نسخة</span>
+          </button>
+          <button class="tool-btn" id="btn-print" title="طباعة">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
+            </svg>
+            <span class="tool-label">طباعة</span>
+          </button>
+        </div>
+
+        <div class="view-toggle">
+          <button id="btn-view-cards" class="view-btn active" title="بطاقات">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+            </svg>
+          </button>
+          <button id="btn-view-table" class="view-btn" title="جدول">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="3" y="3" width="18" height="18" rx="2" />
+              <path d="M3 9h18M3 15h18M9 3v18" />
+            </svg>
+          </button>
+        </div>
+
+        <button id="btn-dark-mode" class="icon-btn" title="تغيير المظهر">
+          <svg id="icon-moon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+            viewBox="0 0 24 24">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+          </svg>
+          <svg id="icon-sun" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+            viewBox="0 0 24 24" class="hidden">
+            <circle cx="12" cy="12" r="5" />
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="header-search">
+      <div class="search-wrapper">
+        <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+          viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input type="search" id="search-input" placeholder="البحث عن عميل، طلب، رقم هاتف، موظف..." autocomplete="off" />
+        <button id="btn-clear-search" class="search-clear hidden">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <span id="order-count" class="order-count hidden-sm"></span>
+
+      <!-- Mobile toolbar: hidden since toolbar is always visible -->
+      <div class="mobile-toolbar hidden">
+        <button class="icon-btn" id="btn-export-excel-m" title="Excel">
+          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </button>
+        <button class="icon-btn" id="btn-import-m" title="استيراد">
+          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="16 16 12 20 8 16" />
+            <line x1="12" y1="20" x2="12" y2="4" />
+          </svg>
+        </button>
+        <button class="icon-btn" id="btn-print-m" title="طباعة">
+          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="exchange-banner no-print" id="exchange-banner">
+      <span class="exchange-banner-label">سعر الصرف الحالي</span>
+      <span id="exchange-banner-text"></span>
+    </div>
+
+    <input type="file" id="import-file-input" accept=".json" class="hidden" />
+  </header>
+
+  <!-- Print header -->
+  <div class="print-only print-header">
+    <h1>نظام إدارة الطلبات</h1>
+    <p id="print-date"></p>
+    <p id="print-count"></p>
+  </div>
+
+  <!-- ═══════════════ STATS ═══════════════ -->
+  <section id="stats-grid" class="stats-grid no-print"></section>
+
+  <!-- ═══════════════ FILTERS PANEL ═══════════════ -->
+  <div class="filters-panel no-print" id="filters-panel">
+    <!-- Status Chips Row -->
+    <div class="status-chips-bar">
+      <div class="status-chips" id="status-chips">
+        <button class="status-chip active" data-status="">الكل</button>
+        <button class="status-chip chip-new" data-status="جديد">● جديد</button>
+        <button class="status-chip chip-progress" data-status="قيد التنفيذ">● قيد التنفيذ</button>
+        <button class="status-chip chip-done" data-status="مكتمل">● مكتمل</button>
+        <button class="status-chip chip-postponed" data-status="مؤجل">● مؤجل</button>
+        <button class="status-chip chip-cancelled" data-status="ملغي">● ملغي</button>
+        <button class="status-chip chip-delayed" id="btn-delayed-chip">⚠ متأخرة</button>
+      </div>
+
+      <div class="filter-bar-right">
+        <button id="btn-adv-filters" class="btn-adv-toggle">
+          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="21" y1="4" x2="14" y2="4" />
+            <line x1="10" y1="4" x2="3" y2="4" />
+            <line x1="21" y1="12" x2="12" y2="12" />
+            <line x1="8" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="20" x2="16" y2="20" />
+            <line x1="12" y1="20" x2="3" y2="20" />
+            <line x1="14" y1="2" x2="14" y2="6" />
+            <line x1="8" y1="10" x2="8" y2="14" />
+            <line x1="16" y1="18" x2="16" y2="22" />
+          </svg>
+          فلاتر
+          <span id="adv-filter-badge" class="adv-badge hidden">!</span>
+        </button>
+
+        <div class="sort-inline">
+          <select id="sort-field" class="f-select sort-select">
+            <option value="createdAt">الأحدث</option>
+            <option value="deliveryDate">تاريخ التسليم</option>
+            <option value="receivedDate">تاريخ الاستلام</option>
+            <option value="clientName">اسم العميل</option>
+            <option value="paid">المدفوع</option>
+            <option value="remaining">الباقي</option>
+            <option value="updatedAt">آخر تعديل</option>
+          </select>
+          <button id="btn-sort-dir" class="f-select sort-dir" title="اتجاه الفرز">↓</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced Filters (collapsible) -->
+    <div id="adv-filters" class="adv-filters hidden">
+      <div class="adv-filters-grid">
+        <div class="adv-filter-field">
+          <label class="adv-label">الموظف</label>
+          <select id="filter-employee" class="f-select">
+            <option value="">الكل</option>
+          </select>
+        </div>
+        <div class="adv-filter-field">
+          <label class="adv-label">طريقة الدفع</label>
+          <select id="filter-payment" class="f-select">
+            <option value="">الكل</option>
+            <option value="نقدي">نقدي</option>
+            <option value="تحويل">تحويل</option>
+            <option value="آجل">آجل</option>
+            <option value="أخرى">أخرى</option>
+          </select>
+        </div>
+        <div class="adv-filter-field">
+          <label class="adv-label">المصدر</label>
+          <select id="filter-source" class="f-select">
+            <option value="">الكل</option>
+          </select>
+        </div>
+        <div class="adv-filter-field">
+          <label class="adv-label">الفترة</label>
+          <select id="filter-date-preset" class="f-select">
+            <option value="">كل الوقت</option>
+            <option value="today">اليوم</option>
+            <option value="week">هذا الأسبوع</option>
+            <option value="month">هذا الشهر</option>
+          </select>
+        </div>
+        <div class="adv-filter-field">
+          <label class="adv-label">من تاريخ</label>
+          <input type="date" id="filter-date-from" class="f-input" />
+        </div>
+        <div class="adv-filter-field">
+          <label class="adv-label">إلى تاريخ</label>
+          <input type="date" id="filter-date-to" class="f-input" />
+        </div>
+      </div>
+      <button id="btn-clear-filters" class="btn-clear-filters hidden">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+        مسح جميع الفلاتر
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════ BULK ACTIONS ═══════════════ -->
+  <div id="bulk-actions" class="bulk-bar no-print hidden">
+    <div class="bulk-bar-inner">
+      <div class="bulk-info">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <polyline points="9 11 12 14 22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+        <span id="bulk-count"></span>
+      </div>
+      <div class="bulk-actions-row">
+        <button id="btn-delete-selected" class="btn-danger-sm">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+          </svg>
+          حذف المحدد
+        </button>
+        <button id="btn-clear-selection" class="btn-ghost-sm">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+          إلغاء التحديد
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ MAIN CONTENT ═══════════════ -->
+  <main id="main-content" class="main-content"></main>
+
+  <!-- Print table -->
+  <div class="print-only" id="print-table-wrapper"></div>
+
+  <!-- ═══════════════ NOTIFICATION BANNER ═══════════════ -->
+  <div id="notif-banner" class="notif-banner hidden no-print">
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+    </svg>
+    <span id="notif-banner-text">تفعيل الإشعارات لتلقي تنبيهات الطلبات</span>
+    <button id="btn-enable-notif" class="notif-btn">تفعيل الإشعارات</button>
+    <button id="btn-dismiss-notif" class="notif-close">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <line x1="18" y1="6" x2="6" y2="18" />
+        <line x1="6" y1="6" x2="18" y2="18" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- ═══════════════ SCROLL TO TOP ═══════════════ -->
+  <button id="btn-scroll-top" class="scroll-top-btn no-print hidden" title="للأعلى">
+    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+      <line x1="12" y1="19" x2="12" y2="5" />
+      <polyline points="5 12 12 5 19 12" />
+    </svg>
+  </button>
+
+  <!-- ═══════════════ TOAST ═══════════════ -->
+  <div id="toast-container" class="toast-container no-print"></div>
+  <div id="floating-status-menu" class="status-menu floating-status-menu hidden no-print"></div>
+
+  <!-- ═══════════════ ORDER FORM MODAL ═══════════════ -->
+  <div id="modal-form" class="modal-overlay hidden">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div class="modal-header-icon">
+            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+          </div>
+          <div>
+            <h2 id="form-title" class="modal-title">إضافة طلب جديد</h2>
+            <p id="form-order-number" class="modal-subtitle"></p>
+          </div>
+        </div>
+        <button class="modal-close" id="btn-close-form">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <form id="order-form" class="modal-body scrollable">
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="form-section-dot dot-blue"></div>
+            <h3 class="form-section-title">بيانات العميل</h3>
+          </div>
+          <div class="form-grid-2">
+            <div class="field-group">
+              <label class="field-label">اسم العميل *</label>
+              <input type="text" id="f-clientName" class="f-input" placeholder="أدخل اسم العميل" />
+              <p class="field-error hidden" id="err-clientName"></p>
+            </div>
+            <div class="field-group">
+              <label class="field-label">اسم الطلب *</label>
+              <input type="text" id="f-orderName" class="f-input" placeholder="أدخل اسم الطلب" />
+              <p class="field-error hidden" id="err-orderName"></p>
+            </div>
+            <div class="field-group">
+              <label class="field-label">رقم الهاتف</label>
+              <input type="tel" id="f-clientPhone" class="f-input" placeholder="05xxxxxxxx" dir="ltr" />
+              <p class="field-error hidden" id="err-clientPhone"></p>
+            </div>
+            <div class="field-group">
+              <label class="field-label">المصدر</label>
+              <input type="text" id="f-source" class="f-input" placeholder="من أين جاء العميل؟" list="sources-list" />
+              <datalist id="sources-list">
+                <option value="واتساب" />
+                <option value="إنستغرام" />
+                <option value="مباشر" />
+                <option value="توصية" />
+                <option value="موقع إلكتروني" />
+                <option value="تيك توك" />
+                <option value="سناب شات" />
+                <option value="أخرى" />
+              </datalist>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="form-section-dot dot-purple"></div>
+            <h3 class="form-section-title">تفاصيل الطلب</h3>
+          </div>
+          <div class="field-group">
+            <label class="field-label">وصف الطلب</label>
+            <textarea id="f-details" class="f-input f-textarea" placeholder="وصف تفصيلي للطلب..."></textarea>
+          </div>
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label class="field-label">تاريخ الاستلام</label>
+              <input type="date" id="f-receivedDate" class="f-input" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">تاريخ التسليم</label>
+              <input type="date" id="f-deliveryDate" class="f-input" />
+              <p class="field-error hidden" id="err-deliveryDate"></p>
+            </div>
+            <div class="field-group">
+              <label class="field-label">وقت التسليم</label>
+              <input type="time" id="f-deliveryTime" class="f-input" />
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="field-group">
+              <label class="field-label">الحالة</label>
+              <select id="f-status" class="f-input f-select">
+                <option value="جديد">جديد</option>
+                <option value="قيد التنفيذ">قيد التنفيذ</option>
+                <option value="مكتمل">مكتمل</option>
+                <option value="مؤجل">مؤجل</option>
+                <option value="ملغي">ملغي</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">الموظف المسؤول</label>
+              <input type="text" id="f-employee" class="f-input" placeholder="اسم الموظف" list="employees-list" />
+              <datalist id="employees-list">
+                <option value="شهيد" />
+                <option value="نصر" />
+                <option value="احمد" />
+                <option value="اياد" />
+              </datalist>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="form-section-dot dot-green"></div>
+            <h3 class="form-section-title">المعلومات المالية</h3>
+          </div>
+          <div class="form-grid-2">
+            <div class="field-group">
+              <label class="field-label">عملة الطلب</label>
+              <select id="f-currency" class="f-input f-select">
+                <option value="YER">ريال يمني (ر.ي)</option>
+                <option value="SAR">ريال سعودي (ر.س)</option>
+                <option value="USD">دولار أمريكي ($)</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">طريقة الدفع</label>
+              <select id="f-paymentMethod" class="f-input f-select">
+                <option value="نقدي">نقدي</option>
+                <option value="تحويل">تحويل</option>
+                <option value="آجل">آجل</option>
+                <option value="أخرى">أخرى</option>
+              </select>
+            </div>
+          </div>
+          <div class="money-exchange-note" id="money-exchange-note"></div>
+          <div class="form-grid-3">
+            <div class="field-group">
+              <label class="field-label">إجمالي قيمة الطلب</label>
+              <div class="input-suffix-wrapper">
+                <input type="number" id="f-totalAmount" class="f-input has-suffix" placeholder="0" min="0"
+                  step="0.01" />
+                <span class="input-suffix money-input-suffix">ر.س</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">المبلغ المدفوع</label>
+              <div class="input-suffix-wrapper">
+                <input type="number" id="f-paid" class="f-input has-suffix" placeholder="0" min="0" step="0.01" />
+                <span class="input-suffix money-input-suffix">ر.س</span>
+              </div>
+            </div>
+            <div class="field-group">
+              <label class="field-label">الباقي <span class="label-hint">(محسوب تلقائياً)</span></label>
+              <div class="input-suffix-wrapper">
+                <input type="number" id="f-remaining" class="f-input has-suffix f-muted" placeholder="0" min="0"
+                  step="0.01" readonly />
+                <span class="input-suffix money-input-suffix">ر.س</span>
+              </div>
+            </div>
+          </div>
+          <div class="money-preview-grid" id="money-preview-grid">
+            <div class="money-preview-card">
+              <div class="money-preview-title">إجمالي الطلب</div>
+              <div id="money-preview-total" class="money-preview-lines"></div>
+            </div>
+            <div class="money-preview-card">
+              <div class="money-preview-title">المدفوع</div>
+              <div id="money-preview-paid" class="money-preview-lines"></div>
+            </div>
+            <div class="money-preview-card">
+              <div class="money-preview-title">الباقي</div>
+              <div id="money-preview-remaining" class="money-preview-lines"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="form-section-dot dot-amber"></div>
+            <h3 class="form-section-title">التنبيهات والملاحظات</h3>
+          </div>
+          <div class="form-grid-2">
+            <div class="field-group">
+              <label class="field-label">نص التنبيه</label>
+              <input type="text" id="f-alertNote" class="f-input" placeholder="تنبيه مهم..." />
+            </div>
+            <div class="field-group">
+              <label class="field-label">تاريخ ووقت التنبيه</label>
+              <input type="datetime-local" id="f-alertDate" class="f-input" />
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">ملاحظات داخلية</label>
+            <textarea id="f-internalNotes" class="f-input f-textarea" placeholder="ملاحظات للموظفين فقط..."></textarea>
+          </div>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button id="btn-submit-form" class="btn-primary">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+            <polyline points="17 21 17 13 7 13 7 21" />
+            <polyline points="7 3 7 8 15 8" />
+          </svg>
+          إضافة الطلب
+        </button>
+        <button id="btn-cancel-form" class="btn-secondary">إلغاء</button>
+        <div id="form-errors-msg" class="form-errors-msg hidden">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          يرجى تصحيح الأخطاء
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ORDER DETAIL MODAL ═══════════════ -->
+  <div id="modal-detail" class="modal-overlay hidden">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <div class="modal-header-info" style="margin-bottom:0.375rem">
+            <h2 id="detail-order-name" class="modal-title"></h2>
+            <span id="detail-delayed-badge" class="delay-pill hidden">⚠ متأخر</span>
+          </div>
+          <div id="detail-order-number" class="modal-subtitle"></div>
+          <span id="detail-status-badge" class="status-badge"></span>
+        </div>
+        <button class="modal-close" id="btn-close-detail">
+          <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body scrollable" id="detail-content"></div>
+      <div class="modal-footer">
+        <button id="btn-detail-edit" class="btn-primary">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+          </svg>
+          تعديل
+        </button>
+        <button id="btn-detail-print" class="btn-secondary">
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          طباعة
+        </button>
+        <button id="btn-detail-duplicate" class="btn-secondary">نسخ الطلب</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════ IMPORT MODAL ═══════════════ -->
+  <div id="modal-import" class="modal-overlay hidden">
+    <div class="modal-box modal-sm">
+      <div class="modal-header">
+        <div class="modal-header-info">
+          <div class="modal-header-icon" style="background:linear-gradient(135deg,#10b981,#059669)">
+            <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+              <polyline points="16 16 12 20 8 16" />
+              <line x1="12" y1="4" x2="12" y2="20" />
+            </svg>
+          </div>
+          <h3 class="modal-title">استيراد البيانات</h3>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div id="import-warnings" class="import-warn-box hidden"></div>
+        <p id="import-info" class="import-info-text"></p>
+      </div>
+      <div class="modal-footer modal-footer-col">
+        <button id="btn-import-merge" class="btn-primary w-full">دمج مع البيانات الحالية</button>
+        <button id="btn-import-replace" class="btn-danger-full">استبدال جميع البيانات</button>
+        <button id="btn-import-cancel" class="btn-secondary w-full">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
