@@ -16,6 +16,7 @@ const K = {
   VIEW:      'orders_system_view_mode',
   DARK:      'orders_system_dark_mode',
   CURRENCY:  'orders_system_currency',
+  HEADER_COLLAPSED: 'orders_system_header_collapsed',
   ORDER_NUM: 'orders_system_counter',
   NOTIF_DISMISSED: 'orders_notif_dismissed',
   FIRED_ALERTS: 'orders_fired_alerts',
@@ -35,6 +36,11 @@ const FX = {
   USD: { YER:1553, SAR:3.80, USD:1 },
 };
 const FX_TEXT = '1 دولار = 1553 ريال يمني • 1 ريال سعودي = 410 ريال يمني • 1 دولار = 3.80 ريال سعودي';
+const FX_BANNER_ITEMS = [
+  { from: '1 دولار', rate: '1553', to: 'ريال يمني' },
+  { from: '1 ريال سعودي', rate: '410', to: 'ريال يمني' },
+  { from: '1 دولار', rate: '3.80', to: 'ريال سعودي' },
+];
 const STATUS_OPTIONS = ['جديد','قيد التنفيذ','مكتمل','مؤجل','ملغي'];
 const STATUS_META = {
   'جديد': {
@@ -158,6 +164,7 @@ let S = {
   viewMode:     'cards',
   darkMode:     false,
   currency:     'SAR',
+  headerCollapsed: false,
   orderCounter: 0,
   selectedIds:  new Set(),
   editingId:    null,
@@ -212,6 +219,7 @@ function loadPrefs() {
   const v=localStorage.getItem(K.VIEW); if(v==='table'||v==='cards') S.viewMode=v;
   S.darkMode = localStorage.getItem(K.DARK)==='true';
   const cur=localStorage.getItem(K.CURRENCY); if(CURRENCIES[cur]) S.currency=cur;
+  S.headerCollapsed = localStorage.getItem(K.HEADER_COLLAPSED)==='true';
   S.orderCounter = parseInt(localStorage.getItem(K.ORDER_NUM)||'0')||0;
 }
 function savePrefs() {
@@ -508,7 +516,19 @@ function getRateTextForForm(currency) {
 function updateCurrencyUI() {
   const sel=document.getElementById('currency-select');
   if(sel) sel.value=S.currency;
-  document.getElementById('exchange-banner-text').textContent = FX_TEXT;
+  const bannerText = document.getElementById('exchange-banner-text');
+  if (bannerText) {
+    bannerText.innerHTML = FX_BANNER_ITEMS.map(item => `
+      <div class="exchange-rate-item">
+        <span class="exchange-rate-side">${esc(item.from)}</span>
+        <span class="exchange-rate-eq">=</span>
+        <span class="exchange-rate-side">
+          <span class="exchange-rate-num">${esc(item.rate)}</span>
+          <span class="exchange-rate-to">${esc(item.to)}</span>
+        </span>
+      </div>
+    `).join('');
+  }
   localStorage.setItem(K.CURRENCY,S.currency);
 }
 function formatDate(s) {
@@ -1738,6 +1758,15 @@ function applyDark(){
   document.getElementById('icon-sun').classList.toggle('hidden',!S.darkMode);
   localStorage.setItem(K.DARK,String(S.darkMode));
 }
+function applyHeaderCollapsed() {
+  const header = document.getElementById('main-header');
+  const brandToggle = document.getElementById('brand-toggle');
+  if (!header || !brandToggle) return;
+  header.classList.toggle('header-collapsed', S.headerCollapsed);
+  brandToggle.setAttribute('aria-expanded', String(!S.headerCollapsed));
+  brandToggle.setAttribute('title', S.headerCollapsed ? 'إظهار الشريط العلوي' : 'إخفاء الشريط العلوي');
+  localStorage.setItem(K.HEADER_COLLAPSED, String(S.headerCollapsed));
+}
 
 /* ════════════════════════════════════════
    BIND ALL EVENTS
@@ -1766,6 +1795,18 @@ function bindEvents(){
   window.addEventListener('scroll',closeStatusMenu,true);
 
   // Header actions
+  const brandToggle = document.getElementById('brand-toggle');
+  const toggleHeaderCollapsed = () => {
+    S.headerCollapsed = !S.headerCollapsed;
+    applyHeaderCollapsed();
+  };
+  brandToggle?.addEventListener('click', toggleHeaderCollapsed);
+  brandToggle?.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleHeaderCollapsed();
+    }
+  });
   document.getElementById('btn-add-new').addEventListener('click',openFormNew);
   document.getElementById('btn-dark-mode').addEventListener('click',()=>{S.darkMode=!S.darkMode;applyDark();});
   document.getElementById('btn-export-excel').addEventListener('click',()=>{exportToExcel(S.orders);showToast('تم تصدير ملف Excel بنجاح','success');});
@@ -1934,6 +1975,7 @@ async function init() {
 
   // Apply dark mode
   applyDark();
+  applyHeaderCollapsed();
 
   // Today's date
   document.getElementById('today-date').textContent =
