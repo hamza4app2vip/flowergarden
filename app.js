@@ -28,6 +28,13 @@ const CURRENCIES = {
   YER: { symbol: '\uFDFC', label: 'ريال يمني',  suffix: 'ر.ي' },
   USD: { symbol: '$',       label: 'دولار',       suffix: '$'   },
 };
+const PHONE_COUNTRIES = [
+  { code: '967', label: 'اليمن' },
+  { code: '966', label: 'السعودية' },
+  { code: '1', label: 'أمريكا' },
+  { code: '20', label: 'مصر' },
+  { code: '968', label: 'عمان' },
+];
 const MONEY_CURRENCIES = ['YER','SAR','USD'];
 const MONEY_FIELDS = ['totalAmount','paid','remaining'];
 const FX = {
@@ -74,6 +81,7 @@ const IMPORT_FIELD_ALIASES = {
   orderNumber: ['رقم الطلب','رقمالطلب','الرقم','order number','ordernumber','order no','order #'],
   clientName: ['اسم العميل','العميل','client name','client','customer','customer name'],
   orderName: ['اسم الطلب','الطلب','اسم المنتج','الخدمة','order name','order','item'],
+  phoneCountryCode: ['رمز الدولة','كود الدولة','مفتاح الدولة','country code','phone country code'],
   clientPhone: ['رقم الهاتف','الهاتف','رقم الجوال','الجوال','phone','mobile','phone number'],
   source: ['المصدر','source','channel'],
   currency: ['عملة الطلب','العملة','currency','order currency'],
@@ -362,6 +370,36 @@ function parseOrderNumberValue(value) {
   const n = parseInt(raw, 10);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
+function normalizePhoneCountryCode(value) {
+  const raw = normalizeArabicDigits(value).replace(/[^\d]/g, '');
+  return PHONE_COUNTRIES.find(country => country.code === raw)?.code || '967';
+}
+function getPhoneCountryMeta(code='967') {
+  return PHONE_COUNTRIES.find(country => country.code === normalizePhoneCountryCode(code)) || PHONE_COUNTRIES[0];
+}
+function cleanPhoneDigits(value) {
+  return normalizeArabicDigits(value).replace(/[^\d]/g, '');
+}
+function detectPhoneCountryCode(phone) {
+  let digits = cleanPhoneDigits(phone);
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  return PHONE_COUNTRIES.find(country => digits.startsWith(country.code) && digits.length >= country.code.length + 6)?.code || '';
+}
+function buildIntlPhone(phone, countryCode='967') {
+  let digits = cleanPhoneDigits(phone);
+  if (!digits) return '';
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  const looksInternational = PHONE_COUNTRIES.some(country => digits.startsWith(country.code) && digits.length >= country.code.length + 6);
+  if (looksInternational) return digits;
+  digits = digits.replace(/^0+/, '');
+  const safeCode = normalizePhoneCountryCode(countryCode);
+  return digits ? `${safeCode}${digits}` : '';
+}
+function formatPhoneDisplay(order) {
+  if (!order?.clientPhone) return '—';
+  const intl = buildIntlPhone(order.clientPhone, getOrderPhoneCountryCode(order));
+  return intl ? `+${intl}` : order.clientPhone.trim();
+}
 function parseExcelDateSerial(value) {
   if (typeof value !== 'number' || typeof XLSX === 'undefined' || !XLSX.SSF?.parse_date_code) return null;
   const parsed = XLSX.SSF.parse_date_code(value);
@@ -454,11 +492,17 @@ function buildMoneyMap(amount, fromCurrency='YER') {
     return acc;
   }, {});
 }
+function getOrderPhoneCountryCode(order) {
+  const explicit = normalizeArabicDigits(order?.phoneCountryCode).replace(/[^\d]/g, '');
+  if (PHONE_COUNTRIES.some(country => country.code === explicit)) return explicit;
+  return detectPhoneCountryCode(order?.clientPhone) || '967';
+}
 function getOrderCurrency(order) {
   return MONEY_CURRENCIES.includes(order?.currency) ? order.currency : 'YER';
 }
 function normalizeOrderMoney(order) {
   const normalized = { ...order };
+  normalized.phoneCountryCode = getOrderPhoneCountryCode(normalized);
   const currency = getOrderCurrency(normalized);
   normalized.currency = currency;
   normalized.convertedAmounts = normalized.convertedAmounts && typeof normalized.convertedAmounts === 'object'
@@ -665,6 +709,7 @@ function svgIcon(name, size=14) {
   const i={
     eye:`<svg width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`,
     edit:`<svg width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+    whatsapp:`<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.52 3.48A11.86 11.86 0 0 0 12.07 0C5.5 0 .16 5.33.16 11.9c0 2.1.55 4.16 1.59 5.97L0 24l6.31-1.66a11.84 11.84 0 0 0 5.76 1.47h.01c6.56 0 11.9-5.34 11.9-11.9 0-3.18-1.24-6.17-3.46-8.43ZM12.08 21.8h-.01a9.88 9.88 0 0 1-5.04-1.38l-.36-.21-3.74.98 1-3.65-.24-.38a9.87 9.87 0 0 1-1.52-5.26c0-5.45 4.44-9.89 9.91-9.89 2.64 0 5.13 1.03 6.99 2.9a9.8 9.8 0 0 1 2.9 6.98c0 5.46-4.44 9.9-9.89 9.9Zm5.42-7.38c-.3-.15-1.77-.87-2.05-.97-.28-.1-.48-.15-.68.15-.2.3-.78.97-.95 1.17-.18.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.47a8.98 8.98 0 0 1-1.66-2.07c-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.64-.93-2.24-.24-.58-.49-.5-.68-.51h-.58c-.2 0-.53.08-.8.38s-1.04 1.02-1.04 2.49 1.07 2.89 1.22 3.09c.15.2 2.09 3.18 5.05 4.46.71.31 1.27.5 1.7.64.72.23 1.37.2 1.88.12.57-.08 1.77-.72 2.02-1.42.25-.7.25-1.3.18-1.42-.07-.12-.27-.2-.57-.35Z"/></svg>`,
     phone:`<svg width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.5 2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6.29 6.29l1.62-1.62a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
     copy:`<svg width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>`,
     print:`<svg width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>`,
@@ -756,14 +801,14 @@ function exportToExcel(orders) {
     return;
   }
   const headers = [
-    'المعرف','رقم الطلب','اسم العميل','اسم الطلب','رقم الهاتف','المصدر','عملة الطلب','عملة العرض',
+    'المعرف','رقم الطلب','اسم العميل','اسم الطلب','رمز الدولة','رقم الهاتف','المصدر','عملة الطلب','عملة العرض',
     'تاريخ الاستلام','تاريخ التسليم','وقت التسليم','الحالة',
     'الموظف المسؤول','الإجمالي','المدفوع','الباقي','طريقة الدفع',
     'نص التنبيه','تاريخ التنبيه','تفاصيل الطلب','ملاحظات داخلية',
     'تاريخ الإنشاء','آخر تعديل'
   ];
   const rows = orders.map(o=>[
-    o.id, o.orderNumber?`#${o.orderNumber}`:'—', o.clientName, o.orderName, o.clientPhone, o.source, getCurrencyMeta(getOrderCurrency(o)).label, getCurrencyMeta(S.currency).label,
+    o.id, o.orderNumber?`#${o.orderNumber}`:'—', o.clientName, o.orderName, getOrderPhoneCountryCode(o), o.clientPhone, o.source, getCurrencyMeta(getOrderCurrency(o)).label, getCurrencyMeta(S.currency).label,
     o.receivedDate, o.deliveryDate, o.deliveryTime, o.status,
     o.employee, getOrderAmount(o,'totalAmount'), getOrderAmount(o,'paid'), getOrderAmount(o,'remaining'), o.paymentMethod,
     o.alertNote, o.alertDate, o.details, o.internalNotes,
@@ -774,7 +819,7 @@ function exportToExcel(orders) {
 
   // Column widths
   ws['!cols'] = [
-    {wch:20},{wch:10},{wch:18},{wch:20},{wch:16},{wch:14},{wch:14},{wch:14},
+    {wch:20},{wch:10},{wch:18},{wch:20},{wch:10},{wch:16},{wch:14},{wch:14},{wch:14},
     {wch:14},{wch:14},{wch:10},{wch:12},
     {wch:14},{wch:12},{wch:12},{wch:12},{wch:12},
     {wch:24},{wch:18},{wch:30},{wch:24},{wch:18},{wch:18}
@@ -841,6 +886,7 @@ function validateImport(data) {
       orderNumber: parseOrderNumberValue(item.orderNumber),
       clientName:  String(item.clientName||''),
       orderName:   String(item.orderName||''),
+      phoneCountryCode: item.phoneCountryCode ? normalizePhoneCountryCode(item.phoneCountryCode) : (detectPhoneCountryCode(item.clientPhone) || '967'),
       clientPhone: String(item.clientPhone||''),
       source:      String(item.source||''),
       receivedDate:parseImportDate(item.receivedDate)||today(),
@@ -1106,6 +1152,7 @@ function cardHTML(order) {
     <div class="card-actions">
       <button class="card-btn" data-action="view"   data-id="${esc(order.id)}" title="عرض">${svgIcon('eye',15)}</button>
       <button class="card-btn" data-action="edit"   data-id="${esc(order.id)}" title="تعديل">${svgIcon('edit',15)}</button>
+      <button class="card-btn c-whatsapp" data-action="wa" data-id="${esc(order.id)}" title="واتساب" ${!order.clientPhone?'disabled':''}>${svgIcon('whatsapp',15)}</button>
       <button class="card-btn" data-action="phone"  data-id="${esc(order.id)}" title="نسخ الرقم" ${!order.clientPhone?'disabled':''}>${svgIcon('phone',15)}</button>
       <button class="card-btn" data-action="dup"    data-id="${esc(order.id)}" title="تكرار">${svgIcon('copy',15)}</button>
       <button class="card-btn" data-action="print"  data-id="${esc(order.id)}" title="طباعة">${svgIcon('print',15)}</button>
@@ -1135,6 +1182,7 @@ function bindCards(list) {
       const o=S.orders.find(x=>x.id===id); if(!o) return;
       if(action==='view')  openDetail(o);
       if(action==='edit')  openFormEdit(o);
+      if(action==='wa')    openWhatsApp(o);
       if(action==='phone') copyPhone(o);
       if(action==='dup')   duplicateOrder(id);
       if(action==='print') printSingle(o);
@@ -1170,6 +1218,7 @@ function tableHTML(list) {
         <div class="td-acts">
           <button class="tiny-btn" data-action="view"  data-id="${esc(o.id)}" title="عرض">${svgIcon('eye',14)}</button>
           <button class="tiny-btn" data-action="edit"  data-id="${esc(o.id)}" title="تعديل">${svgIcon('edit',14)}</button>
+          <button class="tiny-btn t-whatsapp" data-action="wa" data-id="${esc(o.id)}" title="واتساب" ${!o.clientPhone?'disabled':''}>${svgIcon('whatsapp',14)}</button>
           <button class="tiny-btn" data-action="phone" data-id="${esc(o.id)}" title="نسخ الرقم" ${!o.clientPhone?'disabled':''}>${svgIcon('phone',14)}</button>
           <button class="tiny-btn" data-action="dup"   data-id="${esc(o.id)}" title="تكرار">${svgIcon('copy',14)}</button>
           <button class="tiny-btn tdanger" data-action="del" data-id="${esc(o.id)}" title="حذف">${svgIcon('trash',14)}</button>
@@ -1229,6 +1278,7 @@ function bindTable(list) {
       const o=S.orders.find(x=>x.id===id); if(!o) return;
       if(action==='view')  openDetail(o);
       if(action==='edit')  openFormEdit(o);
+      if(action==='wa')    openWhatsApp(o);
       if(action==='phone') copyPhone(o);
       if(action==='dup')   duplicateOrder(id);
       if(action==='del')   deleteConfirm(id,o.orderName);
@@ -1302,9 +1352,22 @@ function setRecent(id){
 }
 function copyPhone(o){
   if(!o.clientPhone) return;
-  navigator.clipboard.writeText(o.clientPhone)
+  const phoneText = `+${buildIntlPhone(o.clientPhone, getOrderPhoneCountryCode(o))}`;
+  navigator.clipboard.writeText(phoneText)
     .then(()=>showToast('تم نسخ الرقم','info'))
     .catch(()=>showToast('فشل النسخ','error'));
+}
+function getWhatsAppUrl(order) {
+  const phone = buildIntlPhone(order?.clientPhone, getOrderPhoneCountryCode(order));
+  return phone ? `http://wa.me/${phone}` : '';
+}
+function openWhatsApp(order) {
+  const url = getWhatsAppUrl(order);
+  if (!url) {
+    showToast('لا يوجد رقم صالح لواتساب', 'warning');
+    return;
+  }
+  window.open(url, '_blank', 'noopener');
 }
 
 function currentFormCurrency() {
@@ -1405,6 +1468,7 @@ function resetForm(){
    'totalAmount','paid','remaining','employee'].forEach(f=>{
     const el=document.getElementById(`f-${f}`); if(el) el.value='';
   });
+  document.getElementById('f-phoneCountryCode').value='967';
   document.getElementById('f-currency').value=S.currency;
   document.getElementById('f-currency').dataset.prevCurrency=S.currency;
   document.getElementById('f-status').value='جديد';
@@ -1413,7 +1477,7 @@ function resetForm(){
   clearFormErrors();
 }
 function fillForm(o){
-  const MAP={clientName:1,orderName:1,clientPhone:1,source:1,receivedDate:1,details:1,
+  const MAP={clientName:1,orderName:1,clientPhone:1,phoneCountryCode:1,source:1,receivedDate:1,details:1,
              deliveryDate:1,deliveryTime:1,status:1,employee:1,paid:1,remaining:1,
              totalAmount:1,paymentMethod:1,alertNote:1,alertDate:1,internalNotes:1};
   const currency = getOrderCurrency(o);
@@ -1424,6 +1488,8 @@ function fillForm(o){
     if(!el) return;
     if (MONEY_FIELDS.includes(k)) {
       el.value = formatMoneyInputValue(o[k], currency);
+    } else if (k === 'phoneCountryCode') {
+      el.value = getOrderPhoneCountryCode(o);
     } else {
       el.value=o[k]??'';
     }
@@ -1435,6 +1501,7 @@ function getFormData(){
   return {
     clientName:   document.getElementById('f-clientName').value.trim(),
     orderName:    document.getElementById('f-orderName').value.trim(),
+    phoneCountryCode: document.getElementById('f-phoneCountryCode').value,
     clientPhone:  document.getElementById('f-clientPhone').value.trim(),
     source:       document.getElementById('f-source').value.trim(),
     receivedDate: document.getElementById('f-receivedDate').value,
@@ -1457,7 +1524,8 @@ function validateForm(d){
   const e={};
   if(!d.clientName)  e.clientName='اسم العميل مطلوب';
   if(!d.orderName)   e.orderName='اسم الطلب مطلوب';
-  if(d.clientPhone && !/^[\d\s\+\-\(\)]{7,15}$/.test(d.clientPhone)) e.clientPhone='رقم غير صحيح';
+  const phoneDigits = cleanPhoneDigits(d.clientPhone);
+  if(d.clientPhone && (phoneDigits.length < 6 || phoneDigits.length > 15)) e.clientPhone='رقم غير صحيح';
   if(d.paid<0)        e.paid='لا يمكن أن يكون سالباً';
   if(d.remaining<0)   e.remaining='لا يمكن أن يكون سالباً';
   if(d.totalAmount<0) e.totalAmount='لا يمكن أن يكون سالباً';
@@ -1500,6 +1568,7 @@ function openDetail(o){
   sb.textContent=o.status;
   document.getElementById('detail-content').innerHTML=buildDetail(o,del);
   document.querySelector('#detail-content .copy-btn')?.addEventListener('click',()=>copyPhone(o));
+  document.querySelector('#detail-content .wa-btn')?.addEventListener('click',()=>openWhatsApp(o));
   document.getElementById('modal-detail').classList.remove('hidden');
 }
 function closeDetail(){
@@ -1516,7 +1585,7 @@ function buildDetail(o,del){
     <div class="detail-grid">
       <div class="detail-item"><div class="detail-lbl">رقم الطلب</div><div class="detail-val">${esc(formatOrderNumber(o.orderNumber))}</div></div>
       <div class="detail-item"><div class="detail-lbl">الاسم</div><div class="detail-val">${esc(o.clientName)}</div></div>
-      <div class="detail-item"><div class="detail-lbl">رقم الهاتف</div><div class="detail-action-row"><div class="detail-val">${esc(o.clientPhone||'—')}</div>${o.clientPhone?`<button class="copy-btn">${svgIcon('copy',12)} نسخ</button>`:''}</div></div>
+      <div class="detail-item"><div class="detail-lbl">رقم الهاتف</div><div class="detail-action-row"><div class="detail-val" dir="ltr">${esc(formatPhoneDisplay(o))}</div>${o.clientPhone?`<button class="copy-btn">${svgIcon('copy',12)} نسخ</button><button class="copy-btn wa-btn">${svgIcon('whatsapp',12)} واتساب</button>`:''}</div></div>
       <div class="detail-item"><div class="detail-lbl">المصدر</div><div class="detail-val">${esc(o.source||'—')}</div></div>
       <div class="detail-item"><div class="detail-lbl">الموظف</div><div class="detail-val">${esc(o.employee||'—')}</div></div>
     </div>
@@ -1578,7 +1647,7 @@ function printSingle(o){
     <table>
       <tr><td>رقم الطلب</td><td>${esc(formatOrderNumber(o.orderNumber))}</td></tr>
       <tr><td>اسم العميل</td><td>${esc(o.clientName)}</td></tr>
-      <tr><td>رقم الهاتف</td><td dir="ltr">${esc(o.clientPhone||'—')}</td></tr>
+      <tr><td>رقم الهاتف</td><td dir="ltr">${esc(formatPhoneDisplay(o))}</td></tr>
       <tr><td>المصدر</td><td>${esc(o.source||'—')}</td></tr>
       <tr><td>الموظف</td><td>${esc(o.employee||'—')}</td></tr>
       <tr><td>تاريخ الاستلام</td><td>${esc(formatDate(o.receivedDate))}</td></tr>

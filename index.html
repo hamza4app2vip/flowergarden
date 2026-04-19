@@ -407,7 +407,16 @@
             </div>
             <div class="field-group">
               <label class="field-label">رقم الهاتف</label>
-              <input type="tel" id="f-clientPhone" class="f-input" placeholder="05xxxxxxxx" dir="ltr" />
+              <div class="phone-input-row">
+                <select id="f-phoneCountryCode" class="f-input f-select phone-country-select">
+                  <option value="967">967 اليمن</option>
+                  <option value="966">966 السعودية</option>
+                  <option value="1">1 أمريكا</option>
+                  <option value="20">20 مصر</option>
+                  <option value="968">968 عمان</option>
+                </select>
+                <input type="tel" id="f-clientPhone" class="f-input phone-number-input" placeholder="77xxxxxxx" dir="ltr" />
+              </div>
               <p class="field-error hidden" id="err-clientPhone"></p>
             </div>
             <div class="field-group">
