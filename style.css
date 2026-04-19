@@ -1356,6 +1356,8 @@ body::before{
 .dark .import-warn-box{background:rgba(146,64,14,.14);border-color:rgba(146,64,14,.35);color:#fcd34d}
 .import-info-text{font-size:.9rem;color:var(--muted-fg)}
 .import-info-text strong{color:var(--fg)}
+.import-meta-note{display:block;margin-top:.45rem;font-size:.78rem;color:var(--muted-fg)}
+.excel-logo{display:block;flex-shrink:0}
 
 /* ========= NOTIFICATION BANNER ========= */
 .notif-banner{

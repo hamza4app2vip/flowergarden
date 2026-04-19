@@ -69,14 +69,15 @@
 
         <div class="toolbar-group">
           <button class="tool-btn" id="btn-export-excel" title="تصدير Excel">
-            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
+            <svg class="excel-logo" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#21a366" d="M13.2 2H19a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2h-5.8z" />
+              <path fill="#107c41" d="M8 3.25 13.2 2v20L8 20.75A2 2 0 0 1 6.3 18.8V5.2A2 2 0 0 1 8 3.25Z" />
+              <path fill="#185c37" d="M3 6.4A2.4 2.4 0 0 1 5.4 4h7.8v16H5.4A2.4 2.4 0 0 1 3 17.6z" />
+              <path fill="#fff" d="m6.9 8.1 1.9-.12 1.2 2.21c.12.23.21.46.31.71h.04c.08-.23.18-.47.3-.73l1.3-2.34 1.73.11-2.26 3.72 2.32 4.03-1.88.11-1.34-2.52a5.8 5.8 0 0 1-.28-.64h-.04c-.07.21-.16.42-.27.63l-1.3 2.43-1.82-.1 2.31-3.95z" />
             </svg>
             <span class="tool-label">Excel</span>
           </button>
-          <button class="tool-btn" id="btn-import" title="استيراد JSON">
+          <button class="tool-btn" id="btn-import" title="استيراد Excel أو JSON">
             <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <polyline points="16 16 12 20 8 16" />
               <line x1="12" y1="4" x2="12" y2="20" />
@@ -160,13 +161,14 @@
       <!-- Mobile toolbar: hidden since toolbar is always visible -->
       <div class="mobile-toolbar hidden">
         <button class="icon-btn" id="btn-export-excel-m" title="Excel">
-          <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
+          <svg class="excel-logo" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#21a366" d="M13.2 2H19a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2h-5.8z" />
+            <path fill="#107c41" d="M8 3.25 13.2 2v20L8 20.75A2 2 0 0 1 6.3 18.8V5.2A2 2 0 0 1 8 3.25Z" />
+            <path fill="#185c37" d="M3 6.4A2.4 2.4 0 0 1 5.4 4h7.8v16H5.4A2.4 2.4 0 0 1 3 17.6z" />
+            <path fill="#fff" d="m6.9 8.1 1.9-.12 1.2 2.21c.12.23.21.46.31.71h.04c.08-.23.18-.47.3-.73l1.3-2.34 1.73.11-2.26 3.72 2.32 4.03-1.88.11-1.34-2.52a5.8 5.8 0 0 1-.28-.64h-.04c-.07.21-.16.42-.27.63l-1.3 2.43-1.82-.1 2.31-3.95z" />
           </svg>
         </button>
-        <button class="icon-btn" id="btn-import-m" title="استيراد">
+        <button class="icon-btn" id="btn-import-m" title="استيراد Excel أو JSON">
           <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <polyline points="16 16 12 20 8 16" />
             <line x1="12" y1="20" x2="12" y2="4" />
@@ -187,7 +189,7 @@
       <span id="exchange-banner-text"></span>
     </div>
 
-    <input type="file" id="import-file-input" accept=".json" class="hidden" />
+    <input type="file" id="import-file-input" accept=".json,.xlsx,.xls,.csv" class="hidden" />
   </header>
 
   <!-- Print header -->

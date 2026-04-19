@@ -63,6 +63,89 @@ const STATUS_META = {
     desc: 'تم إلغاء الطلب',
   },
 };
+const IMPORT_FIELD_ALIASES = {
+  id: ['المعرف','معرف','رقم المعرف','id','identifier'],
+  orderNumber: ['رقم الطلب','رقمالطلب','الرقم','order number','ordernumber','order no','order #'],
+  clientName: ['اسم العميل','العميل','client name','client','customer','customer name'],
+  orderName: ['اسم الطلب','الطلب','اسم المنتج','الخدمة','order name','order','item'],
+  clientPhone: ['رقم الهاتف','الهاتف','رقم الجوال','الجوال','phone','mobile','phone number'],
+  source: ['المصدر','source','channel'],
+  currency: ['عملة الطلب','العملة','currency','order currency'],
+  displayCurrency: ['عملة العرض','عرض العملة','display currency'],
+  receivedDate: ['تاريخ الاستلام','تاريخ الطلب','received date','received','order date'],
+  deliveryDate: ['تاريخ التسليم','موعد التسليم','delivery date','delivery'],
+  deliveryTime: ['وقت التسليم','ميعاد التسليم','delivery time','time'],
+  status: ['الحالة','status'],
+  employee: ['الموظف المسؤول','الموظف','employee','staff','assigned to'],
+  totalAmount: ['الإجمالي','اجمالي الطلب','إجمالي الطلب','قيمة الطلب','المبلغ الإجمالي','total','total amount','amount'],
+  paid: ['المدفوع','المبلغ المدفوع','paid','paid amount'],
+  remaining: ['الباقي','المتبقي','المتبقي عليه','remaining','balance','due'],
+  paymentMethod: ['طريقة الدفع','الدفع','payment method','payment'],
+  alertNote: ['نص التنبيه','التنبيه','ملاحظة التنبيه','alert note','alert'],
+  alertDate: ['تاريخ التنبيه','موعد التنبيه','alert date','reminder date'],
+  details: ['تفاصيل الطلب','التفاصيل','details','description'],
+  internalNotes: ['ملاحظات داخلية','ملاحظات','notes','internal notes'],
+  createdAt: ['تاريخ الإنشاء','تاريخ الانشاء','created at','created'],
+  updatedAt: ['آخر تعديل','اخر تعديل','updated at','updated','last update'],
+};
+const IMPORT_STATUS_ALIASES = {
+  'جديد': 'جديد',
+  'new': 'جديد',
+  'pending': 'جديد',
+  'قيدالتنفيذ': 'قيد التنفيذ',
+  'قيد التنفيذ': 'قيد التنفيذ',
+  'inprogress': 'قيد التنفيذ',
+  'processing': 'قيد التنفيذ',
+  'working': 'قيد التنفيذ',
+  'مكتمل': 'مكتمل',
+  'مكتملة': 'مكتمل',
+  'completed': 'مكتمل',
+  'done': 'مكتمل',
+  'finished': 'مكتمل',
+  'مؤجل': 'مؤجل',
+  'مؤجلة': 'مؤجل',
+  'postponed': 'مؤجل',
+  'delayed': 'مؤجل',
+  'onhold': 'مؤجل',
+  'ملغي': 'ملغي',
+  'ملغى': 'ملغي',
+  'cancelled': 'ملغي',
+  'canceled': 'ملغي',
+  'cancel': 'ملغي',
+};
+const IMPORT_PAYMENT_ALIASES = {
+  'نقدي': 'نقدي',
+  'cash': 'نقدي',
+  'كاش': 'نقدي',
+  'تحويل': 'تحويل',
+  'حوالة': 'تحويل',
+  'banktransfer': 'تحويل',
+  'transfer': 'تحويل',
+  'آجل': 'آجل',
+  'اجل': 'آجل',
+  'credit': 'آجل',
+  'later': 'آجل',
+  'أخرى': 'أخرى',
+  'اخرى': 'أخرى',
+  'other': 'أخرى',
+};
+const IMPORT_CURRENCY_ALIASES = {
+  'yer': 'YER',
+  'yemeni': 'YER',
+  'yemeniriyal': 'YER',
+  'رياليمني': 'YER',
+  'اليمني': 'YER',
+  'sar': 'SAR',
+  'saudi': 'SAR',
+  'saudiriyal': 'SAR',
+  'ريالسعودي': 'SAR',
+  'السعودي': 'SAR',
+  'usd': 'USD',
+  'دولار': 'USD',
+  'دولارامريكي': 'USD',
+  'امريكي': 'USD',
+  'us dollar': 'USD',
+};
 
 /* ── STATE ── */
 let S = {
@@ -237,6 +320,113 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function num(v) { return Number(v)||0; }
+function normalizeArabicDigits(v) {
+  return String(v ?? '')
+    .replace(/[٠-٩]/g, d => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/[۰-۹]/g, d => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/\u066B/g, '.')
+    .replace(/\u066C/g, ',');
+}
+function normalizeLookup(v) {
+  return normalizeArabicDigits(v)
+    .toLowerCase()
+    .replace(/[\u200e\u200f]/g, '')
+    .replace(/[(){}\[\]#_*]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function parseMoneyValue(value) {
+  if (value === null || value === undefined || value === '') return 0;
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  let raw = normalizeArabicDigits(value)
+    .replace(/[^\d,.\-]/g, '')
+    .trim();
+  if (!raw) return 0;
+  const commaCount = (raw.match(/,/g) || []).length;
+  if (raw.includes('.') && raw.includes(',')) raw = raw.replace(/,/g, '');
+  else if (!raw.includes('.') && commaCount === 1) raw = raw.replace(',', '.');
+  else raw = raw.replace(/,/g, '');
+  const parsed = parseFloat(raw);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+function parseOrderNumberValue(value) {
+  const raw = normalizeArabicDigits(value).replace(/[^\d]/g, '');
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+function parseExcelDateSerial(value) {
+  if (typeof value !== 'number' || typeof XLSX === 'undefined' || !XLSX.SSF?.parse_date_code) return null;
+  const parsed = XLSX.SSF.parse_date_code(value);
+  if (!parsed) return null;
+  return new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d, parsed.H || 0, parsed.M || 0, Math.floor(parsed.S || 0)));
+}
+function parseImportDate(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (value instanceof Date && !isNaN(value)) return value.toISOString().slice(0, 10);
+  const fromSerial = parseExcelDateSerial(value);
+  if (fromSerial && !isNaN(fromSerial)) return fromSerial.toISOString().slice(0, 10);
+  const raw = normalizeArabicDigits(value).trim();
+  if (!raw) return '';
+  const m = raw.match(/^(\d{1,4})[\/.\-](\d{1,2})[\/.\-](\d{1,4})$/);
+  if (m) {
+    let y, mo, d;
+    if (m[1].length === 4) { y = m[1]; mo = m[2]; d = m[3]; }
+    else { d = m[1]; mo = m[2]; y = m[3]; }
+    const iso = `${y.padStart(4, '20').slice(-4)}-${mo.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    const dt = new Date(`${iso}T00:00:00`);
+    if (!isNaN(dt)) return iso;
+  }
+  const dt = new Date(raw);
+  return isNaN(dt) ? raw : dt.toISOString().slice(0, 10);
+}
+function parseImportDateTime(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (value instanceof Date && !isNaN(value)) return value.toISOString();
+  const fromSerial = parseExcelDateSerial(value);
+  if (fromSerial && !isNaN(fromSerial)) return fromSerial.toISOString();
+  const raw = normalizeArabicDigits(value).trim();
+  if (!raw) return '';
+  const dt = new Date(raw);
+  if (!isNaN(dt)) return dt.toISOString();
+  const plainDate = parseImportDate(raw);
+  return plainDate ? `${plainDate}T00:00:00.000Z` : '';
+}
+function parseImportTime(value) {
+  if (value === null || value === undefined || value === '') return '';
+  if (value instanceof Date && !isNaN(value)) {
+    return value.toISOString().slice(11, 16);
+  }
+  const fromSerial = parseExcelDateSerial(value);
+  if (fromSerial && !isNaN(fromSerial)) return fromSerial.toISOString().slice(11, 16);
+  const raw = normalizeArabicDigits(value).trim();
+  const m = raw.match(/(\d{1,2})[:.](\d{2})/);
+  if (m) return `${m[1].padStart(2, '0')}:${m[2]}`;
+  return raw;
+}
+function mapAliasedValue(value, aliases, fallback='') {
+  const key = normalizeLookup(value).replace(/\s+/g, '');
+  return aliases[key] || fallback;
+}
+function canonicalStatus(value) { return mapAliasedValue(value, IMPORT_STATUS_ALIASES, 'جديد'); }
+function canonicalPaymentMethod(value) { return mapAliasedValue(value, IMPORT_PAYMENT_ALIASES, 'نقدي'); }
+function canonicalCurrency(value) {
+  if (MONEY_CURRENCIES.includes(value)) return value;
+  return mapAliasedValue(value, IMPORT_CURRENCY_ALIASES, 'YER');
+}
+function findCanonicalImportField(header) {
+  const key = normalizeLookup(header).replace(/\s+/g, '');
+  return Object.entries(IMPORT_FIELD_ALIASES).find(([, aliases]) => aliases.some(alias => normalizeLookup(alias).replace(/\s+/g, '') === key))?.[0] || '';
+}
+function buildImportFingerprint(order) {
+  const parts = [
+    order.orderNumber ? `n:${order.orderNumber}` : '',
+    normalizeLookup(order.clientName).replace(/\s+/g, ''),
+    normalizeLookup(order.orderName).replace(/\s+/g, ''),
+    normalizeLookup(order.clientPhone).replace(/\s+/g, ''),
+    normalizeLookup(order.deliveryDate).replace(/\s+/g, ''),
+  ].filter(Boolean);
+  return parts.join('|');
+}
 
 function getCur() { return CURRENCIES[S.currency] || CURRENCIES.SAR; }
 function getCurrencyMeta(currency) { return CURRENCIES[currency] || CURRENCIES.YER; }
@@ -607,37 +797,49 @@ function exportToJson(orders) {
    IMPORT VALIDATION
 ════════════════════════════════════════ */
 function validateImport(data) {
-  if (!Array.isArray(data)) return {valid:false,orders:[],errors:['الملف لا يحتوي على مصفوفة صالحة']};
+  const list = Array.isArray(data) ? data : Array.isArray(data?.orders) ? data.orders : null;
+  if (!Array.isArray(list)) return {valid:false,orders:[],errors:['الملف لا يحتوي على طلبات صالحة']};
   const errors=[], validOrders=[];
-  const STATUSES=['جديد','قيد التنفيذ','مكتمل','مؤجل','ملغي'];
-  const PAYMENTS=['نقدي','تحويل','آجل','أخرى'];
-  data.forEach((item,i)=>{
+  list.forEach((item,i)=>{
     if(typeof item!=='object'||!item){errors.push(`الصف ${i+1}: ليس كائناً`);return;}
+    const currency = canonicalCurrency(item.currency || item.displayCurrency);
+    const amountCurrency = canonicalCurrency(item.displayCurrency || item.currency);
+    const totalAmount = roundMoney(convertAmount(parseMoneyValue(item.totalAmount), amountCurrency, currency), currency);
+    const paid = roundMoney(convertAmount(parseMoneyValue(item.paid), amountCurrency, currency), currency);
+    const hasRemaining = item.remaining !== undefined && item.remaining !== null && String(item.remaining).trim() !== '';
+    const remaining = roundMoney(
+      hasRemaining
+        ? convertAmount(parseMoneyValue(item.remaining), amountCurrency, currency)
+        : Math.max(totalAmount - paid, 0),
+      currency
+    );
+    const createdAt = parseImportDateTime(item.createdAt) || new Date().toISOString();
+    const updatedAt = parseImportDateTime(item.updatedAt) || createdAt;
     if(!item.clientName||!item.orderName){errors.push(`الصف ${i+1}: يجب توفر اسم العميل واسم الطلب`);return;}
-    const now=new Date().toISOString();
     validOrders.push({
       id:          item.id||genId(),
+      orderNumber: parseOrderNumberValue(item.orderNumber),
       clientName:  String(item.clientName||''),
       orderName:   String(item.orderName||''),
       clientPhone: String(item.clientPhone||''),
       source:      String(item.source||''),
-      receivedDate:String(item.receivedDate||today()),
+      receivedDate:parseImportDate(item.receivedDate)||today(),
       details:     String(item.details||''),
-      deliveryDate:String(item.deliveryDate||''),
-      deliveryTime:String(item.deliveryTime||''),
-      status:      STATUSES.includes(item.status)?item.status:'جديد',
+      deliveryDate:parseImportDate(item.deliveryDate)||'',
+      deliveryTime:parseImportTime(item.deliveryTime)||'',
+      status:      canonicalStatus(item.status),
       employee:    String(item.employee||''),
-      currency:    MONEY_CURRENCIES.includes(item.currency)?item.currency:'YER',
-      paid:        num(item.paid),
-      remaining:   num(item.remaining),
-      totalAmount: num(item.totalAmount),
+      currency,
+      paid,
+      remaining,
+      totalAmount,
       convertedAmounts:item.convertedAmounts&&typeof item.convertedAmounts==='object'?item.convertedAmounts:null,
-      paymentMethod:PAYMENTS.includes(item.paymentMethod)?item.paymentMethod:'نقدي',
+      paymentMethod:canonicalPaymentMethod(item.paymentMethod),
       alertNote:   String(item.alertNote||''),
-      alertDate:   String(item.alertDate||''),
+      alertDate:   parseImportDate(item.alertDate)||'',
       internalNotes:String(item.internalNotes||''),
-      createdAt:   String(item.createdAt||now),
-      updatedAt:   String(item.updatedAt||now),
+      createdAt,
+      updatedAt,
     });
   });
   return {valid:validOrders.length>0,orders:validOrders.map(normalizeOrderMoney),errors};
@@ -1378,38 +1580,147 @@ function printSingle(o){
 /* ════════════════════════════════════════
    IMPORT
 ════════════════════════════════════════ */
-function handleFile(file){
-  const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const data=JSON.parse(e.target.result);
-      const result=validateImport(data);
-      S.pendingImport=result;
-      showImportModal(result);
-    }catch{showToast('ملف JSON غير صالح','error');}
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || ''));
+    r.onerror = () => reject(new Error('تعذر قراءة الملف النصي'));
+    r.readAsText(file);
+  });
+}
+function readFileAsArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(new Error('تعذر قراءة ملف Excel'));
+    r.readAsArrayBuffer(file);
+  });
+}
+function chooseImportSheet(workbook) {
+  const candidates = workbook.SheetNames.map(sheetName => {
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+      header: 1,
+      raw: true,
+      defval: '',
+      blankrows: false,
+    });
+    let bestHeaderRow = -1;
+    let bestScore = 0;
+    rows.slice(0, 8).forEach((row, idx) => {
+      if (!Array.isArray(row)) return;
+      const score = row.reduce((sum, cell) => sum + (findCanonicalImportField(cell) ? 1 : 0), 0);
+      if (score > bestScore) {
+        bestScore = score;
+        bestHeaderRow = idx;
+      }
+    });
+    if (bestHeaderRow < 0 || bestScore < 2) return { sheetName, rows: [], score: 0 };
+    const fieldMap = rows[bestHeaderRow].map(findCanonicalImportField);
+    const mappedRows = rows.slice(bestHeaderRow + 1).map(row => {
+      if (!Array.isArray(row)) return null;
+      if (row.every(cell => String(cell ?? '').trim() === '')) return null;
+      const record = {};
+      fieldMap.forEach((field, colIdx) => {
+        const cell = row[colIdx];
+        if (!field || cell === '' || cell === null || cell === undefined) return;
+        record[field] = cell;
+      });
+      return Object.keys(record).length ? record : null;
+    }).filter(Boolean);
+    return {
+      sheetName,
+      rows: mappedRows,
+      score: bestScore + Math.min(mappedRows.length, 25) / 100,
+    };
+  }).filter(item => item.score > 0 && item.rows.length);
+
+  return candidates.sort((a, b) => b.score - a.score)[0] || null;
+}
+async function parseImportFile(file) {
+  const name = String(file?.name || '').toLowerCase();
+  const ext = name.split('.').pop();
+  if (ext === 'json') {
+    const raw = await readFileAsText(file);
+    const parsed = JSON.parse(raw);
+    return {
+      data: Array.isArray(parsed) ? parsed : (Array.isArray(parsed?.orders) ? parsed.orders : parsed),
+      meta: { source: 'json', label: 'تم تحليل ملف JSON بنجاح' },
+    };
+  }
+  if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+    throw new Error('صيغة الملف غير مدعومة. استخدم Excel أو CSV أو JSON');
+  }
+  if (typeof XLSX === 'undefined') {
+    throw new Error('مكتبة Excel غير محملة، تحقق من الاتصال ثم أعد المحاولة');
+  }
+  const buffer = await readFileAsArrayBuffer(file);
+  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  const bestSheet = chooseImportSheet(workbook);
+  if (!bestSheet) throw new Error('تعذر العثور على جدول طلبات صالح داخل ملف Excel');
+  return {
+    data: bestSheet.rows,
+    meta: {
+      source: ext,
+      label: `تم تحليل ملف ${ext.toUpperCase()} من الورقة "${bestSheet.sheetName}"`,
+    },
   };
-  r.readAsText(file);
+}
+async function handleFile(file){
+  try {
+    const parsed = await parseImportFile(file);
+    const result = validateImport(parsed.data);
+    result.meta = parsed.meta;
+    S.pendingImport=result;
+    showImportModal(result);
+  } catch (err) {
+    showToast(err?.message || 'تعذر استيراد الملف', 'error');
+  }
 }
 function showImportModal(result){
   const w=document.getElementById('import-warnings');
   if(result.errors.length){
     w.classList.remove('hidden');
-    w.innerHTML=`<p style="font-weight:700;margin-bottom:.25rem">تحذيرات:</p>`+result.errors.slice(0,3).map(e=>`<p>${esc(e)}</p>`).join('');
+    const preview = result.errors.slice(0,5);
+    w.innerHTML=`<p style="font-weight:700;margin-bottom:.25rem">تحذيرات:</p>`+
+      preview.map(e=>`<p>${esc(e)}</p>`).join('')+
+      (result.errors.length>preview.length?`<p>و${result.errors.length-preview.length} تحذير إضافي...</p>`:'');
   } else w.classList.add('hidden');
-  document.getElementById('import-info').innerHTML=`تم العثور على <strong>${result.orders.length}</strong> طلب صالح`;
+  const meta = result.meta?.label ? `<span class="import-meta-note">${esc(result.meta.label)}</span>` : '';
+  document.getElementById('import-info').innerHTML=`تم العثور على <strong>${result.orders.length}</strong> طلب صالح${meta}`;
   document.getElementById('modal-import').classList.remove('hidden');
 }
 function confirmImport(mode){
   if(!S.pendingImport?.valid){showToast('لا توجد بيانات صالحة','error');closeImportModal();return;}
   const newOrders=S.pendingImport.orders;
+  let importedCount = newOrders.length;
+  let skippedCount = 0;
   if(mode==='replace'){
     S.orders=newOrders;
   } else {
     const ids=new Set(S.orders.map(o=>o.id));
-    S.orders=[...S.orders,...newOrders.filter(o=>!ids.has(o.id))];
+    const fingerprints = new Set(S.orders.map(buildImportFingerprint).filter(Boolean));
+    const merged = [];
+    newOrders.forEach(order => {
+      const fp = buildImportFingerprint(order);
+      if (ids.has(order.id) || (fp && fingerprints.has(fp))) {
+        skippedCount++;
+        return;
+      }
+      ids.add(order.id);
+      if (fp) fingerprints.add(fp);
+      merged.push(order);
+    });
+    importedCount = merged.length;
+    S.orders=[...S.orders,...merged];
   }
+  syncOrderNumbers();
   saveOrders(S.orders);
-  showToast(`تم استيراد ${newOrders.length} طلب بنجاح`,'success');
+  showToast(
+    skippedCount
+      ? `تم استيراد ${importedCount} طلب وتجاهل ${skippedCount} مكرر`
+      : `تم استيراد ${importedCount} طلب بنجاح`,
+    'success'
+  );
   closeImportModal(); scheduleAllAlerts(); render();
 }
 function closeImportModal(){
