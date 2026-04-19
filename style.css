@@ -323,59 +323,112 @@ body::before{
   }
   .header-search{padding:0 .9rem .65rem}
 }
+@media(max-width:768px){
+  .header{
+    position:relative;
+    top:auto;
+    z-index:6;
+  }
+}
 @media(max-width:560px){
+  .header{
+    box-shadow:none;
+    backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+  }
   .header-top{
     padding:.625rem .75rem;
     flex-wrap:wrap;
     align-items:flex-start;
-    gap:.75rem;
+    gap:.7rem;
   }
-  .brand{flex:1 1 100%;gap:.625rem}
+  .brand{
+    flex:1 1 100%;
+    gap:.625rem;
+  }
   .header-actions{
     width:100%;
-    flex-wrap:wrap;
-    gap:.4rem;
-    justify-content:flex-start;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto auto;
+    grid-template-areas:
+      "add add add"
+      "currency view theme"
+      "tools tools tools";
+    align-items:center;
+    gap:.55rem;
+    justify-content:stretch;
   }
   .header-actions > *{min-width:0}
   .currency-select{
-    order:1;
-    flex:0 0 6.75rem;
-    width:auto;
+    grid-area:currency;
+    width:100%;
     min-width:0;
-    padding:.45rem .55rem;
-    font-size:.72rem;
+    min-height:2.45rem;
+    padding:.45rem .75rem;
+    font-size:.76rem;
   }
   #btn-add-new{
-    order:2;
-    flex:1 1 auto;
+    grid-area:add;
+    width:100%;
     justify-content:center;
     min-width:0;
-    font-size:.82rem;
-    padding:.5rem .8rem;
+    font-size:.88rem;
+    padding:.7rem .95rem;
+    gap:.45rem;
   }
-  .view-toggle{order:3}
-  #btn-dark-mode{order:4}
+  .view-toggle{
+    grid-area:view;
+    justify-self:start;
+    min-height:2.45rem;
+    padding:.2rem;
+  }
+  .view-btn{
+    min-width:2.15rem;
+    min-height:2.05rem;
+    padding:.4rem .5rem;
+  }
+  #btn-dark-mode{
+    grid-area:theme;
+    justify-self:start;
+    width:2.45rem;
+    height:2.45rem;
+  }
   .toolbar-group{
-    order:5;
-    flex:1 1 100%;
+    grid-area:tools;
+    width:100%;
+    justify-content:flex-start;
     overflow-x:auto;
     overflow-y:hidden;
-    padding-bottom:.2rem;
+    padding-bottom:.15rem;
     -webkit-overflow-scrolling:touch;
     scrollbar-width:none;
   }
+  .toolbar-group .tool-btn{flex:0 0 auto}
   .toolbar-group::-webkit-scrollbar{display:none}
-  .header-search{padding:0 .75rem .75rem;flex-wrap:wrap}
+  .header-search{
+    padding:0 .75rem .75rem;
+    flex-wrap:wrap;
+    gap:.55rem;
+  }
   .search-wrapper{flex-basis:100%}
+  .exchange-banner{
+    margin:0 .75rem .8rem;
+    padding:.72rem .9rem;
+  }
 }
 @media(max-width:400px){
   .header-top{padding:.625rem .75rem}
   .brand-title{font-size:.85rem}
   .btn-primary{padding:.5rem .8rem;gap:.4rem}
   #btn-add-new{
-    flex-basis:calc(100% - 5rem);
-    font-size:.82rem;
+    font-size:.84rem;
+    padding:.65rem .8rem;
+  }
+  .header-actions{
+    gap:.45rem;
+  }
+  .currency-select{
+    padding:.45rem .68rem;
   }
   .tool-btn{
     min-width:2.25rem;
@@ -384,13 +437,20 @@ body::before{
   }
 }
 @media(max-width:360px){
-  #btn-add-new span{display:none}
-  #btn-add-new{
-    flex:0 0 auto;
-    padding:.5rem .65rem;
-    gap:0;
+  .header-actions{
+    grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:
+      "add add"
+      "currency currency"
+      "view theme"
+      "tools tools";
   }
-  .currency-select{flex:1 1 0}
+  #btn-add-new span{display:inline}
+  #btn-add-new{
+    padding:.62rem .8rem;
+    gap:.4rem;
+  }
+  .currency-select{font-size:.74rem}
 }
 
 /* ========= BUTTONS ========= */
